@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import javax.enterprise.context.ApplicationScoped;
 import javax.inject.Inject;
 import java.util.Base64;
+import java.util.regex.Pattern;
 
 @ApplicationScoped
 public class KubernetesRunner {
@@ -38,6 +39,12 @@ public class KubernetesRunner {
             return -1;
         }
 
+        String user = "";
+        if (namespace.matches(".*-user[0-9]+")) {
+            String[] split = namespace.split(Pattern.quote("-"));
+            user = split[split.length -1];
+        }
+
         String matrixSecretName = System.getenv().getOrDefault("MATRIX_SECRET", "matrix-synapse-token");
         String matrixAccessTokenKey = System.getenv().getOrDefault("MATRIX_ACCESS_TOKEN_KEY", "access_token");
         String matrixServerName = System.getenv().getOrDefault("MATRIX_SERVER_NAME", "globex");
@@ -56,7 +63,8 @@ public class KubernetesRunner {
                 matrix.access.token=%s
                 matrix.server.url=%s
                 matrix.server=%s
-                """.formatted(accessToken, matrixServerUrl, matrixServerName);
+                matrix.user=%s
+                """.formatted(accessToken, matrixServerUrl, matrixServerName, "@" + user + ":" + matrixServerName);
 
         Secret newSecret = new SecretBuilder().withNewMetadata().withName(matrixClientSecret).endMetadata()
                 .addToData("matrix.properties", Base64.getEncoder().encodeToString(secretData.getBytes())).build();
